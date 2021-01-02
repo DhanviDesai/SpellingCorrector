@@ -1,13 +1,6 @@
 import json
-from collections import Counter
 
-#----------------------------------
-#TODO:
-#Handle pointers posting thing
-#append words into answers list
-#rank them based on edit distance
-#-----------------------------------
-
+#Calculate the edit distance to convert str1 to str2
 def editDistDP(str1, str2, m, n):
     # Create a table to store results of subproblems
     dp = [[0 for x in range(n + 1)] for x in range(m + 1)]
@@ -39,34 +32,21 @@ def editDistDP(str1, str2, m, n):
                                    dp[i-1][j-1])    # Replace
  
     return dp[m][n]
-
-
-def calculate_jc_no_un(bigram1,bigram2):
-    intersection = []
-    union = []
-    for b in bigram1:
-        if(b in bigram2 and b not in intersection):
-            intersection.append(b)
-    for b in bigram2:
-        if(b in bigram1 and b not in intersection):
-            intersection.append(b)
-    for b in bigram1:
-        if(b not in union and b not in intersection):
-            union.append(b)
-    for b in bigram2:
-        if(b not in union and b not in intersection):
-            union.append(b)
-    if(len(union) != 0):
-        return  len(intersection)/len(union)
-    else:
-        return -999
     
-
+#Calculate the Jaccardian co-efficient between the two bigrams
 def calculate_jc(bigram1,bigram2):
+
+    #Create a set from the two bigram lists
     set_a = set(bigram1)
     set_b = set(bigram2)
+    
+    #Find the intersection between the two sets
     intersection = set_a.intersection(set_b)
+
+    #Find the union between the two sets
     union = set_a.union(set_b)
+
+    #Jaccardian co-efficent = |X n Y| / |X u Y|
     return len(intersection)/len(union)
 
 #Query word
@@ -80,6 +60,7 @@ bi = [""+w[i]+w[i+1] for i in range(len(w)-1)]
 bi_words_dict = {}
     #Keeps track of the pointer to each list. Each bigram is stored as the key and it contains a list with 2 items: the current word that it points to and the current index
 bi_words_pointer = {}
+
 #Initialize the above dictionaries
 for gram in bi:
     bi_words_dict[gram] = []
@@ -95,47 +76,40 @@ real_words_dict = {}
 with open("json_files\\dictionary-json.json","r") as openfile:
     real_words_dict = json.load(openfile)
 
-#----------------------------------------------
-#Printing testing part
-# print(type(real_words_dict['freedom']))
-# print(real_words_dict['freedom'])
-# print('fr' in real_words_dict['freedom'])
-#-----------------------------------------------
-
 #Create the list of words with atleast one bigram
 for word_key in real_words_dict.keys():
     for gram in bi:
         if gram in real_words_dict[word_key]:
             bi_words_dict[gram].append(word_key)
 
+#List to keep track of pointers at the end of the list
 pointersAtEndList = []
 
-pointers_pointing_to_same_word = []
-
+#Run until all the pointers (bi-gram keys) have reached the end of the list
 while(len(pointersAtEndList) < len(bi_words_pointer.keys())):
 
+    #Senteinel variables to find the lexicographically small word out of all the words that are being pointed
     small_word = None
     small_key = None
 
+    #Traverse all the bi-gram lists to add worthy candidates
     for key in bi_words_dict.keys():
 
+        #When pointer reaches the end of the list, add it to the list
         if( bi_words_pointer[key] == len(bi_words_dict[key]) - 1):
             pointersAtEndList.append(key)
 
+        #Initialize the sentinel variables to current word
         elif(small_word is None or small_key is None):
             small_word = bi_words_dict[key][bi_words_pointer[key]]
             small_key = key
-            pointers_pointing_to_same_word = []
-            pointers_pointing_to_same_word.append(key)
 
-        
+        #If the current word is smaller than the small word, update the sentinel variables
         elif(bi_words_dict[key][bi_words_pointer[key]] < small_word):
             small_word = bi_words_dict[key][bi_words_pointer[key]]
             small_key = key
-            pointers_pointing_to_same_word = []
-            pointers_pointing_to_same_word.append(key)
         
-        
+        #If current word is equal to small word ( tie situation ) then update both the pointers
         elif(bi_words_dict[key][bi_words_pointer[key]] == small_word):
             if(bi_words_pointer[key] < len(bi_words_dict[key]) - 1): 
                 bi_words_pointer[key] += 1
@@ -145,19 +119,18 @@ while(len(pointersAtEndList) < len(bi_words_pointer.keys())):
             if((small_word,jc) not in answer_list):
                 answer_list.append((small_word,jc))
     
+    #After traversal of bi-gram list increment the pointer
     if(bi_words_pointer[small_key] < len(bi_words_dict[small_key]) - 1):
         bi_words_pointer[small_key] += 1
 
-final_word_list = []
-
-# print(answer_list)
-
+#Sentinel variables to find the word with minimum edit distance
 min_dist = 999
 min_word = None
 
+#Traverse all the words short-listed from n-gram similarity to find the word with minimum edit distance
 for wt in answer_list:
+    #If Jaccardian co-efficent of the word is greater than 0.45 consider it for edit distance calculation
     if(wt[1]>0.45):
-        # print(wt[0])
         min_val = editDistDP(w,wt[0],len(w),len(wt[0]))
         if(min_val < min_dist):
             min_dist = min_val
