@@ -74,7 +74,7 @@ answer_list = []
 real_words_dict = {}
 
 #Read the dictionary and save the words
-with open(os.path.join(os.getcwd,"json_files","dictionary-json.json"),"r") as openfile:
+with open(os.path.join(os.getcwd(),"json_files","dictionary-json.json"),"r") as openfile:
     real_words_dict = json.load(openfile)
 
 #Create the list of words with atleast one bigram
